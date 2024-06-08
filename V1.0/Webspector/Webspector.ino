@@ -27,7 +27,7 @@
 #include "Settings.h"                                   // your general settings
 
 
-int numBands = 64;                                      // Default number of bands. change it by pressing the mode button
+int numBands = 32;                                      // Default number of bands. change it by pressing the mode button
 
 //*************Button setup ******************************************************************************************************************************
 EasyButton ModeBut(MODE_BUTTON_PIN);                    //defining the button
