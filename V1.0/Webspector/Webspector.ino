@@ -37,8 +37,11 @@ int numBands = 32;                                      // Default number of ban
 #define CS_PIN 5
 #define MAX_DEVICES 4
 
-// Maximum value for LED scaling
-float maxValue = 10.0;
+//DIN (Data In) to GPIO 23
+//CS (Chip Select) to GPIO 5
+//CLK (Clock) to GPIO 18
+//VCC to 3.3V or 5V (check your MAX7219 module's voltage requirements)
+//GND to GND
 
 
 //*************Button setup ******************************************************************************************************************************
@@ -139,8 +142,8 @@ void loop() {
   for (int i = 0; i < numBands; i++)FreqBins[i] /= (allBandsPeak * 1.0f);
 
   SendData(); // Print the data to serial
-
-  displayFFTData(); // Output the data to the LED matrix
+  
+  sleep(0.01);
 
 } // loop end
 
@@ -153,29 +156,45 @@ int BucketFrequency(int iBucket) {
   return iOffset * (samplingFrequency / 2) / (SAMPLEBLOCK / 2);
 }
 
+// Maximum value for LED scaling
+float maxValue = 1.00;
+
+
 void SendData() {
-  String json = "[";
-  for (int i = 0; i < numBands; i++) {
-    if (i > 0) {
-      json += ", ";
+  
+    mx.clear();
+
+    String json = "[";
+    for (int i = 0; i < numBands; i++) {
+
+      if (i > 0) {
+        json += ", ";
+      }
+
+      json += "{\"bin\":";
+      json += "\"" + labels[i] + "\"";
+      json += ", \"value\":";
+      json += String(FreqBins[i]);
+      json += "}";      
+      
+      int numLEDs = map(FreqBins[i], 0.00, maxValue, 0, 8); // Scale to 0-8 LEDs   
+
+      // Set the column on the LED matrix
+        for (int row = 0; row < numLEDs; row++) {
+            mx.setPoint(row, i, true);  // Set the LED at (row, i) to be ON
+        }
+
     }
-    json += "{\"bin\":";
-    json += "\"" + labels[i] + "\"";
-    json += ", \"value\":";
-    json += String(FreqBins[i]);
-    json += "}";
-  }
-  json += "]";
-  Serial.println(json); // Print JSON to serial
+
+    mx.update(); 
+    
+    json += "]";
+
+    Serial.println(json); // Print JSON to serial    
+ 
 }
 
-void displayFFTData() {
-  mx.clear();
-  for (int i = 0; i < numBands; i++) {
-    int numLEDs = map(FreqBins[i], 0, maxValue, 0, 8); // Scale to 0-8 LEDs
-    for (int j = 0; j < numLEDs; j++) {
-      mx.setPoint(j, i, true);
-    }
-  }
-  mx.update();
-}
+
+
+
+
