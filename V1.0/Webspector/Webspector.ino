@@ -18,16 +18,28 @@
  
 #define VERSION     "V1.0"
 //general libraries
-#include <arduinoFFT.h>                                 //library for FFT analysis
-#include <EasyButton.h>                                 //library for handling buttons
+#include <arduinoFFT.h>                                 //library for FFT analysis, Enrique Condes 1.5.6
+#include <EasyButton.h>                                 //library for handling buttons 2.0.3
 
 //included files
 #include "I2SPLUGIN.h"                                  //Setting up the ADC for I2S interface ( very fast readout)
 #include "FFT.h"                                        //some things for selecting the correct arrays for each number of bands
 #include "Settings.h"                                   // your general settings
 
+#include <MD_MAX72xx.h>
+
 
 int numBands = 32;                                      // Default number of bands. change it by pressing the mode button
+
+// Pin definitions for LED matrix
+#define DATA_IN 23
+#define CLK_PIN 18
+#define CS_PIN 5
+#define MAX_DEVICES 4
+
+// Maximum value for LED scaling
+float maxValue = 10.0;
+
 
 //*************Button setup ******************************************************************************************************************************
 EasyButton ModeBut(MODE_BUTTON_PIN);                    //defining the button
@@ -45,6 +57,9 @@ void onPressed() {
 }
 //*************Button setup end***************************************************************************************************************************
 
+// LED matrix object
+MD_MAX72XX mx = MD_MAX72XX(MD_MAX72XX::FC16_HW, DATA_IN, CLK_PIN, CS_PIN, MAX_DEVICES);
+
 void setup() {
   delay(500);
   Serial.begin(115200);
@@ -56,6 +71,9 @@ void setup() {
   ModeBut.onPressed(onPressed);
 
   SetNumberofBands(numBands);
+
+  mx.begin();
+  mx.control(MD_MAX72XX::INTENSITY, 8); // Set intensity level
 }
 
 void loop() {
@@ -121,6 +139,9 @@ void loop() {
   for (int i = 0; i < numBands; i++)FreqBins[i] /= (allBandsPeak * 1.0f);
 
   SendData(); // Print the data to serial
+
+  displayFFTData(); // Output the data to the LED matrix
+
 } // loop end
 
 
@@ -146,4 +167,15 @@ void SendData() {
   }
   json += "]";
   Serial.println(json); // Print JSON to serial
+}
+
+void displayFFTData() {
+  mx.clear();
+  for (int i = 0; i < numBands; i++) {
+    int numLEDs = map(FreqBins[i], 0, maxValue, 0, 8); // Scale to 0-8 LEDs
+    for (int j = 0; j < numLEDs; j++) {
+      mx.setPoint(j, i, true);
+    }
+  }
+  mx.update();
 }
